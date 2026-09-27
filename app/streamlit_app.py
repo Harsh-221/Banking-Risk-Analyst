@@ -180,9 +180,9 @@ else:
     try:
         _start_embedded_backend()
         if API:
-            st.sidebar.info(f"API unavailable at {API}; using the embedded local pipeline instead.")
+            st.sidebar.warning(f"External API at {API} is unreachable; standalone mode is active.")
         else:
-            st.sidebar.info("No API URL configured; using the embedded local pipeline.")
+            st.sidebar.success("Standalone mode active. This app is using its embedded pipeline and local database.")
     except Exception as exc:
         st.error(f"Could not start the embedded project pipeline: {exc}")
         st.stop()
