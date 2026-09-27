@@ -50,7 +50,7 @@ From the repository root, with the environment active:
 python -m src.pipeline
 ```
 
-The pipeline uses the included `data/raw/transactions.csv`. If that file is absent, it generates it. It trains a model only if `models/fraud_model.joblib` is absent; it then scores the latest 20% by timestamp and imports those holdout rows into `data/banking_fraud.db`.
+The pipeline uses the included `data/raw/transactions.csv`. If that file is absent, it generates it. The selected model and metrics are included with the project; if the model artifact is absent, the pipeline trains one. It then scores the latest 20% by timestamp and imports those holdout rows into `data/banking_fraud.db`.
 
 To train a fresh model and refresh the score/database outputs:
 
@@ -114,6 +114,30 @@ On the first start, the API container creates the synthetic data if needed, trai
 Stop the services with `Ctrl+C`, then run `docker compose down`. PostgreSQL data is kept in a named Docker volume. To remove that database volume and reset stored cases, run `docker compose down -v`.
 
 The Compose database credentials are development-only. Do not expose this Compose setup as a public or production deployment.
+
+## Deploy the Streamlit app
+
+For Streamlit Community Cloud, set the app's main file to `app/streamlit_app.py` and deploy this repository. The dashboard checks for a reachable FastAPI backend at startup. If no backend URL is configured, or the configured URL cannot be reached, it switches to **embedded local mode**: it prepares the dataset/model, uses the local database, and serves the dashboard and policy assistant in the Streamlit process. The bundled selected model avoids a training step on a normal first launch.
+
+If the app is currently trying `localhost:8080` or another private container address, remove `API_BASE_URL` from the Streamlit app's Secrets to use embedded mode. `localhost` points back to the Streamlit container, and a platform's internal port is not a public API address.
+
+To use a separate FastAPI service instead, deploy the API independently and set its externally reachable HTTPS base URL in Streamlit Cloud's **App settings → Secrets**:
+
+```toml
+API_BASE_URL = "https://your-api-service.example.com"
+```
+
+Use the service's public base URL only—no `/api` suffix, `localhost`, `0.0.0.0`, or internal port. The FastAPI service must have the same model/data and a reachable database. If it is unavailable, the dashboard falls back to the embedded project pipeline.
+
+Optional Streamlit secrets can also configure generation and durable storage:
+
+```toml
+OPENAI_API_KEY = "your-api-key"
+OPENAI_MODEL = "model-available-to-your-account"
+DATABASE_URL = "postgresql+psycopg://user:password@host:5432/database"
+```
+
+Embedded mode uses SQLite by default. Streamlit-hosted local files may be reset when an app restarts, so configure an external database if analyst notes must persist across deployments. The first embedded launch may take longer because it trains the model when no model artifact is present.
 
 ## Notebook and command-line workflows
 
@@ -185,7 +209,7 @@ Settings are read from environment variables; `.env` is loaded for local runs.
 | `DATABASE_URL` | local SQLite file | SQLAlchemy URL; use `postgresql+psycopg://...` for PostgreSQL |
 | `OPENAI_API_KEY` | unset | Enables optional OpenAI text generation |
 | `OPENAI_MODEL` | unset | Model name to use when the key is set |
-| `API_BASE_URL` | `http://localhost:8000` | API URL used by Streamlit |
+| `API_BASE_URL` | unset | Optional reachable FastAPI base URL; unset or unreachable uses embedded mode |
 | `POLICY_DOCUMENTS_DIR` | `documents/` | Folder searched for Markdown policy references |
 
 ## Learning roadmap

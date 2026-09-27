@@ -6,4 +6,6 @@ venv/
 .ipynb_checkpoints/
 data/processed/
 data/*.db
-models/
+models/*
+!models/fraud_model.joblib
+!models/metrics.json
